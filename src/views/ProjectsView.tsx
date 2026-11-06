@@ -13,7 +13,22 @@ import {
   ChevronRight,
   MoveRight,
   MoveLeft,
+  GripVertical,
+  UserCheck,
+  UserMinus,
 } from 'lucide-react';
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  closestCorners,
+  DragStartEvent,
+  DragEndEvent,
+} from '@dnd-kit/core';
 import { useAuth } from '../contexts/AuthContext';
 import { updateTask, createColumn, logActivity } from '../services/firestoreService';
 import { StatusBadge, PriorityBadge } from '../components/common/Badge';
@@ -32,6 +47,273 @@ interface ProjectsViewProps {
   onSelectTask: (task: Task) => void;
 }
 
+// -------------------------------------------------------------
+// Draggable Task Card Component
+// -------------------------------------------------------------
+interface DraggableTaskCardProps {
+  task: Task;
+  users: UserProfile[];
+  currentUserId?: string;
+  onSelectTask: (task: Task) => void;
+  canMovePrev: boolean;
+  canMoveNext: boolean;
+  onMovePrev: () => void;
+  onMoveNext: () => void;
+  onClaimTask: (task: Task) => void;
+}
+
+const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({
+  task,
+  users,
+  currentUserId,
+  onSelectTask,
+  canMovePrev,
+  canMoveNext,
+  onMovePrev,
+  onMoveNext,
+  onClaimTask,
+}) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
+
+  const isAssignedToMe = Boolean(currentUserId && task.assigneeIds?.includes(currentUserId));
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onClick={() => onSelectTask(task)}
+      className={`bg-white rounded-xl p-3.5 border border-[#EAE5F4] hover:border-[#7654C7]/50 shadow-xs hover:shadow-md transition cursor-grab active:cursor-grabbing group flex flex-col gap-2.5 touch-none select-none ${
+        isDragging ? 'opacity-30 border-dashed border-[#7654C7]' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <PriorityBadge priority={task.priority} />
+        {task.dueDate && (
+          <span className="text-[10px] font-medium text-[#5A5370] flex items-center gap-1">
+            <Clock className="w-3 h-3 text-[#958FA5]" />
+            {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+          </span>
+        )}
+      </div>
+
+      <h4 className="text-xs font-bold text-[#1E1638] line-clamp-2">
+        {task.title}
+      </h4>
+
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {task.tags.map((tag, i) => (
+            <span
+              key={i}
+              className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F5F3FA] text-[#5A5370]"
+            >
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Card Footer: Assignees, Quick Claim & Move Actions */}
+      <div className="flex items-center justify-between pt-2 border-t border-[#F5F3FA]">
+        <div className="flex items-center -space-x-1.5">
+          {task.assigneeIds?.slice(0, 3).map((uid) => {
+            const u = users.find((usr) => usr.id === uid);
+            return (
+              <div
+                key={uid}
+                className="w-5 h-5 rounded-full bg-[#7654C7] text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white"
+                title={u?.name}
+              >
+                {u?.name?.charAt(0) || 'U'}
+              </div>
+            );
+          })}
+          {task.checklistTotal ? (
+            <span className="text-[10px] text-[#958FA5] pl-2 font-medium">
+              {task.checklistCompleted || 0}/{task.checklistTotal} subitens
+            </span>
+          ) : null}
+        </div>
+
+        {/* Action icons: Quick Claim and Move Handles */}
+        <div
+          className="flex items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Quick Claim Button */}
+          {!isAssignedToMe && currentUserId && (
+            <button
+              type="button"
+              onClick={() => onClaimTask(task)}
+              className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-[#7654C7] bg-[#7654C7]/10 hover:bg-[#7654C7] hover:text-white transition flex items-center gap-1"
+              title="Assumir esta tarefa"
+            >
+              <UserCheck className="w-3 h-3" />
+              <span>Assumir</span>
+            </button>
+          )}
+
+          {isAssignedToMe && (
+            <span
+              className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5"
+              title="Você é o responsável por esta tarefa"
+            >
+              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+              <span>Minha</span>
+            </span>
+          )}
+
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+            {canMovePrev && (
+              <button
+                type="button"
+                onClick={onMovePrev}
+                className="p-1 rounded text-[#958FA5] hover:text-[#30205D] hover:bg-[#F5F3FA]"
+                title="Mover para coluna anterior"
+              >
+                <MoveLeft className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canMoveNext && (
+              <button
+                type="button"
+                onClick={onMoveNext}
+                className="p-1 rounded text-[#958FA5] hover:text-[#30205D] hover:bg-[#F5F3FA]"
+                title="Avançar para próxima coluna"
+              >
+                <MoveRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// -------------------------------------------------------------
+// Floating Card Preview while dragging
+// -------------------------------------------------------------
+const TaskCardPreview: React.FC<{ task: Task; users: UserProfile[] }> = ({ task, users }) => (
+  <div className="w-72 bg-white rounded-xl p-3.5 border-2 border-[#7654C7] shadow-2xl rotate-2 cursor-grabbing flex flex-col gap-2.5 pointer-events-none">
+    <div className="flex items-center justify-between gap-2">
+      <PriorityBadge priority={task.priority} />
+      {task.dueDate && (
+        <span className="text-[10px] font-medium text-[#5A5370] flex items-center gap-1">
+          <Clock className="w-3 h-3 text-[#958FA5]" />
+          {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+        </span>
+      )}
+    </div>
+    <h4 className="text-xs font-bold text-[#1E1638] line-clamp-2">
+      {task.title}
+    </h4>
+  </div>
+);
+
+// -------------------------------------------------------------
+// Droppable Kanban Column Container
+// -------------------------------------------------------------
+interface DroppableKanbanColumnProps {
+  column: Column;
+  tasks: Task[];
+  users: UserProfile[];
+  currentUserId?: string;
+  onSelectTask: (task: Task) => void;
+  onAddTask: () => void;
+  canMovePrev: boolean;
+  canMoveNext: boolean;
+  onMoveTask: (task: Task, direction: 'prev' | 'next') => void;
+  onClaimTask: (task: Task) => void;
+}
+
+const DroppableKanbanColumn: React.FC<DroppableKanbanColumnProps> = ({
+  column,
+  tasks,
+  users,
+  currentUserId,
+  onSelectTask,
+  onAddTask,
+  canMovePrev,
+  canMoveNext,
+  onMoveTask,
+  onClaimTask,
+}) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`w-72 sm:w-80 shrink-0 bg-[#F5F3FA] rounded-2xl p-3 border transition-all duration-200 flex flex-col max-h-[75vh] ${
+        isOver
+          ? 'border-[#7654C7] bg-[#F4EFFE]/70 ring-2 ring-[#7654C7]/20 shadow-sm'
+          : 'border-[#EAE5F4]'
+      }`}
+    >
+      {/* Column Header */}
+      <div className="flex items-center justify-between pb-3 px-1 border-b border-[#EAE5F4]">
+        <div className="flex items-center gap-2">
+          <h3 className="text-xs font-bold text-[#1E1638] uppercase tracking-wider">
+            {column.title}
+          </h3>
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white text-[#5A5370] border border-[#DDD7E9]">
+            {tasks.length}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onAddTask}
+          className="p-1 rounded-md text-[#958FA5] hover:text-[#1E1638] hover:bg-white transition"
+          title="Adicionar tarefa nesta coluna"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Tasks in Column */}
+      <div className="flex-1 overflow-y-auto py-2 space-y-2.5 min-h-[140px]">
+        {tasks.length === 0 ? (
+          <div className="text-center py-10 text-[11px] text-[#958FA5] border border-dashed border-[#DDD7E9] rounded-xl bg-white/50">
+            Arraste tarefas aqui
+          </div>
+        ) : (
+          tasks.map((task) => (
+            <DraggableTaskCard
+              key={task.id}
+              task={task}
+              users={users}
+              currentUserId={currentUserId}
+              onSelectTask={onSelectTask}
+              canMovePrev={canMovePrev}
+              canMoveNext={canMoveNext}
+              onMovePrev={() => onMoveTask(task, 'prev')}
+              onMoveNext={() => onMoveTask(task, 'next')}
+              onClaimTask={onClaimTask}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// -------------------------------------------------------------
+// ProjectsView Main Component
+// -------------------------------------------------------------
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
   projects,
   selectedProjectId,
@@ -49,6 +331,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [showAddColumn, setShowAddColumn] = useState(false);
+  const [activeDraggingTask, setActiveDraggingTask] = useState<Task | null>(null);
+
+  // Configure drag sensors with a 5px activation distance so normal card clicks open the task modal
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -59,6 +351,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       .sort((a, b) => a.order - b.order);
 
     const projectTasks = tasks.filter((t) => t.projectId === selectedProject.id);
+
+    const [permissionError, setPermissionError] = useState<string | null>(null);
 
     const handleMoveTaskColumn = async (task: Task, direction: 'prev' | 'next') => {
       const currentIndex = projectColumns.findIndex((c) => c.id === task.columnId);
@@ -77,6 +371,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       else if (lower.includes('revis')) targetStatus = 'review';
       else if (lower.includes('conclu')) targetStatus = 'done';
 
+      // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
+      if (targetStatus === 'done' && !isManager) {
+        setPermissionError('Apenas Gestores e Administradores têm permissão para concluir tarefas.');
+        setTimeout(() => setPermissionError(null), 4000);
+        return;
+      }
+
       await updateTask(task.id, {
         columnId: targetCol.id,
         status: targetStatus,
@@ -90,6 +391,81 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         action: `moveu a tarefa para a coluna "${targetCol.title}"`,
         details: task.title,
       });
+    };
+
+    const handleDragStart = (event: DragStartEvent) => {
+      const taskId = event.active.id as string;
+      const task = projectTasks.find((t) => t.id === taskId);
+      if (task) {
+        setActiveDraggingTask(task);
+      }
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveDraggingTask(null);
+
+      if (!over) return;
+
+      const taskId = active.id as string;
+      const targetColumnId = over.id as string;
+
+      const currentTask = projectTasks.find((t) => t.id === taskId);
+      if (!currentTask || currentTask.columnId === targetColumnId) return;
+
+      const targetCol = projectColumns.find((c) => c.id === targetColumnId);
+      if (!targetCol) return;
+
+      // Infer status from target column
+      let targetStatus = currentTask.status;
+      const lower = targetCol.title.toLowerCase();
+      if (lower.includes('backlog')) targetStatus = 'backlog';
+      else if (lower.includes('fazer')) targetStatus = 'todo';
+      else if (lower.includes('andamento')) targetStatus = 'in_progress';
+      else if (lower.includes('revis')) targetStatus = 'review';
+      else if (lower.includes('conclu')) targetStatus = 'done';
+
+      // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
+      if (targetStatus === 'done' && !isManager) {
+        setPermissionError('Apenas Gestores e Administradores têm permissão para concluir tarefas.');
+        setTimeout(() => setPermissionError(null), 4000);
+        return;
+      }
+
+      // Update in Firestore
+      await updateTask(taskId, {
+        columnId: targetColumnId,
+        status: targetStatus,
+      });
+
+      await logActivity({
+        projectId: selectedProject.id,
+        taskId,
+        userId: currentUser?.uid || 'user',
+        userName: userProfile?.name || 'Colaborador',
+        action: `moveu a tarefa para a coluna "${targetCol.title}" via arrastar e soltar`,
+        details: currentTask.title,
+      });
+    };
+
+    const handleClaimTaskFromBoard = async (task: Task) => {
+      if (!currentUser?.uid) return;
+      try {
+        const existing = task.assigneeIds || [];
+        if (existing.includes(currentUser.uid)) return;
+        const updated = [...existing, currentUser.uid];
+        await updateTask(task.id, { assigneeIds: updated });
+        await logActivity({
+          projectId: selectedProject.id,
+          taskId: task.id,
+          userId: currentUser.uid,
+          userName: userProfile?.name || 'Colaborador',
+          action: 'assumiu a tarefa no quadro',
+          details: task.title,
+        });
+      } catch (err) {
+        console.error(err);
+      }
     };
 
     const handleAddColumn = async (e: React.FormEvent) => {
@@ -108,6 +484,21 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     return (
       <div className="space-y-4">
+        {permissionError && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-semibold shadow-xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-md bg-amber-100 text-amber-700">⚠️</span>
+              <span>{permissionError}</span>
+            </div>
+            <button
+              onClick={() => setPermissionError(null)}
+              className="text-amber-700 hover:text-amber-900 text-xs px-2 py-0.5"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+
         {/* Project Header Bar */}
         <div className="bg-white rounded-2xl p-4 md:p-6 border border-[#EAE5F4] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start md:items-center gap-3">
@@ -190,151 +581,57 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         )}
 
-        {/* Kanban Horizontal Viewport */}
-        <div className="flex gap-4 overflow-x-auto pb-6 pt-2 items-start min-h-[550px]">
-          {projectColumns.length === 0 ? (
-            <div className="w-full text-center py-16 bg-white rounded-2xl border border-dashed border-[#DDD7E9]">
-              <FolderKanban className="w-10 h-10 text-[#958FA5] mx-auto mb-2" />
-              <p className="text-sm font-bold text-[#1E1638]">Quadro sem colunas configuradas</p>
-              <button
-                onClick={() => setShowAddColumn(true)}
-                className="mt-3 px-4 py-2 bg-[#30205D] text-white text-xs font-semibold rounded-lg"
-              >
-                Criar Primeira Coluna
-              </button>
-            </div>
-          ) : (
-            projectColumns.map((column, colIdx) => {
-              const columnTasks = projectTasks.filter((t) => t.columnId === column.id);
-
-              return (
-                <div
-                  key={column.id}
-                  className="w-72 sm:w-80 shrink-0 bg-[#F5F3FA] rounded-2xl p-3 border border-[#EAE5F4] flex flex-col max-h-[75vh]"
+        {/* Kanban Board with DndContext */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4 overflow-x-auto pb-6 pt-2 items-start min-h-[550px]">
+            {projectColumns.length === 0 ? (
+              <div className="w-full text-center py-16 bg-white rounded-2xl border border-dashed border-[#DDD7E9]">
+                <FolderKanban className="w-10 h-10 text-[#958FA5] mx-auto mb-2" />
+                <p className="text-sm font-bold text-[#1E1638]">Quadro sem colunas configuradas</p>
+                <button
+                  onClick={() => setShowAddColumn(true)}
+                  className="mt-3 px-4 py-2 bg-[#30205D] text-white text-xs font-semibold rounded-lg"
                 >
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between pb-3 px-1 border-b border-[#EAE5F4]">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xs font-bold text-[#1E1638] uppercase tracking-wider">
-                        {column.title}
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white text-[#5A5370] border border-[#DDD7E9]">
-                        {columnTasks.length}
-                      </span>
-                    </div>
+                  Criar Primeira Coluna
+                </button>
+              </div>
+            ) : (
+              projectColumns.map((column, colIdx) => {
+                const columnTasks = projectTasks.filter((t) => t.columnId === column.id);
 
-                    <button
-                      onClick={() =>
-                        onOpenNewTaskModalWithContext(selectedProject.id, column.id)
-                      }
-                      className="p-1 rounded-md text-[#958FA5] hover:text-[#1E1638] hover:bg-white transition"
-                      title="Adicionar tarefa nesta coluna"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
+                return (
+                  <DroppableKanbanColumn
+                    key={column.id}
+                    column={column}
+                    tasks={columnTasks}
+                    users={users}
+                    currentUserId={currentUser?.uid}
+                    onSelectTask={onSelectTask}
+                    onAddTask={() =>
+                      onOpenNewTaskModalWithContext(selectedProject.id, column.id)
+                    }
+                    canMovePrev={colIdx > 0}
+                    canMoveNext={colIdx < projectColumns.length - 1}
+                    onMoveTask={handleMoveTaskColumn}
+                    onClaimTask={handleClaimTaskFromBoard}
+                  />
+                );
+              })
+            )}
+          </div>
 
-                  {/* Tasks in Column */}
-                  <div className="flex-1 overflow-y-auto py-2 space-y-2.5">
-                    {columnTasks.length === 0 ? (
-                      <div className="text-center py-8 text-[11px] text-[#958FA5] border border-dashed border-[#DDD7E9] rounded-xl bg-white/50">
-                        Nenhuma tarefa
-                      </div>
-                    ) : (
-                      columnTasks.map((task) => {
-                        const canMovePrev = colIdx > 0;
-                        const canMoveNext = colIdx < projectColumns.length - 1;
-
-                        return (
-                          <div
-                            key={task.id}
-                            onClick={() => onSelectTask(task)}
-                            className="bg-white rounded-xl p-3.5 border border-[#EAE5F4] hover:border-[#7654C7]/50 shadow-xs hover:shadow-md transition cursor-pointer group flex flex-col gap-2.5"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <PriorityBadge priority={task.priority} />
-                              {task.dueDate && (
-                                <span className="text-[10px] font-medium text-[#5A5370] flex items-center gap-1">
-                                  <Clock className="w-3 h-3 text-[#958FA5]" />
-                                  {new Date(task.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-                                </span>
-                              )}
-                            </div>
-
-                            <h4 className="text-xs font-bold text-[#1E1638] line-clamp-2">
-                              {task.title}
-                            </h4>
-
-                            {task.tags && task.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {task.tags.map((tag, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F5F3FA] text-[#5A5370]"
-                                  >
-                                    #{tag}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Card Footer: Assignees & Move Actions */}
-                            <div className="flex items-center justify-between pt-2 border-t border-[#F5F3FA]">
-                              <div className="flex items-center -space-x-1.5">
-                                {task.assigneeIds?.slice(0, 3).map((uid) => {
-                                  const u = users.find((usr) => usr.id === uid);
-                                  return (
-                                    <div
-                                      key={uid}
-                                      className="w-5 h-5 rounded-full bg-[#7654C7] text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-white"
-                                      title={u?.name}
-                                    >
-                                      {u?.name?.charAt(0) || 'U'}
-                                    </div>
-                                  );
-                                })}
-                                {task.checklistTotal ? (
-                                  <span className="text-[10px] text-[#958FA5] pl-2 font-medium">
-                                    {task.checklistCompleted || 0}/{task.checklistTotal} subitens
-                                  </span>
-                                ) : null}
-                              </div>
-
-                              {/* Quick Move Handles */}
-                              <div
-                                className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {canMovePrev && (
-                                  <button
-                                    onClick={() => handleMoveTaskColumn(task, 'prev')}
-                                    className="p-1 rounded text-[#958FA5] hover:text-[#30205D] hover:bg-[#F5F3FA]"
-                                    title="Mover para coluna anterior"
-                                  >
-                                    <MoveLeft className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                {canMoveNext && (
-                                  <button
-                                    onClick={() => handleMoveTaskColumn(task, 'next')}
-                                    className="p-1 rounded text-[#958FA5] hover:text-[#30205D] hover:bg-[#F5F3FA]"
-                                    title="Avançar para próxima coluna"
-                                  >
-                                    <MoveRight className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+          {/* Floating Drag Overlay */}
+          <DragOverlay>
+            {activeDraggingTask ? (
+              <TaskCardPreview task={activeDraggingTask} users={users} />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
     );
   }

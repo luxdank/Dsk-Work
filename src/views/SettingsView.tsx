@@ -35,8 +35,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ departments }) => {
   // Profile Form state
   const [name, setName] = useState(userProfile?.name || '');
   const [position, setPosition] = useState(userProfile?.position || '');
+  const [department, setDepartment] = useState(
+    userProfile?.department || (departments[0]?.name ?? 'Tecnologia')
+  );
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
+
+  // Sync state if userProfile updates
+  React.useEffect(() => {
+    if (userProfile) {
+      if (userProfile.name) setName(userProfile.name);
+      if (userProfile.position) setPosition(userProfile.position);
+      if (userProfile.department) setDepartment(userProfile.department);
+    } else if (departments.length > 0 && !department) {
+      setDepartment(departments[0].name);
+    }
+  }, [userProfile, departments]);
 
   // Department Modal State
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -56,6 +70,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ departments }) => {
       await setUserProfile(currentUser.uid, {
         name: name.trim(),
         position: position.trim(),
+        department: department.trim(),
       });
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
@@ -194,9 +209,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ departments }) => {
 
             <div>
               <label className="block text-xs font-semibold text-[#1E1638] mb-1">
-                Nível de Acesso
+                Equipe / Departamento
               </label>
-              <div className="pt-1.5">
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-[#DDD7E9] rounded-lg text-xs text-[#1E1638] focus:outline-none focus:border-[#7654C7]"
+              >
+                {departments.length === 0 ? (
+                  <option value={department}>{department || 'Geral'}</option>
+                ) : (
+                  departments.map((d) => (
+                    <option key={d.id} value={d.name}>
+                      {d.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-1">
+            <div>
+              <span className="block text-xs font-semibold text-[#1E1638] mb-1">
+                Nível de Acesso
+              </span>
+              <div>
                 <RoleBadge role={userProfile?.role || 'colaborador'} />
               </div>
             </div>

@@ -119,13 +119,14 @@ export const LoginView: React.FC = () => {
       <div className="w-full max-w-md relative z-10">
         {/* Logo & Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#30205D] text-white shadow-xl shadow-[#30205D]/20 mb-4 transform hover:scale-105 transition">
-            <Layers className="w-8 h-8 text-[#A987FD]" />
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white shadow-xl shadow-[#30205D]/10 border border-[#EAE5F4] mb-3 transform hover:scale-105 transition">
+            <img
+              src="/assets/aistudio/Logo_tecnol_gico_Dsk_Work_em_azul_e_roxo_56a1e2ae.png"
+              alt="DK Work"
+              className="h-12 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-extrabold text-[#1E1638] tracking-tight">
-            DK Work
-          </h1>
-          <p className="text-sm text-[#5A5370] mt-1.5 font-medium">
+          <p className="text-sm text-[#5A5370] font-medium">
             Gerenciamento profissional de projetos e tarefas
           </p>
         </div>

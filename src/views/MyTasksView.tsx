@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   FolderKanban,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateTask, logActivity } from '../services/firestoreService';
@@ -20,6 +21,8 @@ interface MyTasksViewProps {
   projects: Project[];
   onSelectTask: (task: Task) => void;
   onOpenNewTaskModal: () => void;
+  searchQuery?: string;
+  setSearchQuery?: (query: string) => void;
 }
 
 export const MyTasksView: React.FC<MyTasksViewProps> = ({
@@ -27,11 +30,32 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   projects,
   onSelectTask,
   onOpenNewTaskModal,
+  searchQuery,
+  setSearchQuery,
 }) => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, isManager } = useAuth();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [toggleError, setToggleError] = useState<string | null>(null);
+
+  // Use the external searchQuery if provided, otherwise fallback to local searchTerm
+  const currentSearch = (searchQuery !== undefined ? searchQuery : searchTerm);
+  const activeSearch = currentSearch.trim().toLowerCase();
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (setSearchQuery) {
+      setSearchQuery(val);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    if (setSearchQuery) {
+      setSearchQuery('');
+    }
+  };
 
   // Filter tasks assigned to logged-in user
   const userTasks = tasks.filter((t) =>
@@ -39,16 +63,18 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   );
 
   const filtered = userTasks.filter((t) => {
-    if (filterStatus === 'pending' && (t.status === 'done')) return false;
+    if (filterStatus === 'pending' && t.status === 'done') return false;
     if (filterStatus === 'done' && t.status !== 'done') return false;
     if (filterStatus === 'in_progress' && t.status !== 'in_progress' && t.status !== 'review')
       return false;
     if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
-    if (searchTerm) {
-      const match =
-        t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      if (!match) return false;
+
+    // Filter by title or description using the searchQuery state
+    if (activeSearch) {
+      const titleMatch = t.title ? t.title.toLowerCase().includes(activeSearch) : false;
+      const descMatch = t.description ? t.description.toLowerCase().includes(activeSearch) : false;
+      const tagMatch = t.tags ? t.tags.some((tag) => tag.toLowerCase().includes(activeSearch)) : false;
+      if (!titleMatch && !descMatch && !tagMatch) return false;
     }
     return true;
   });
@@ -59,6 +85,14 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   const handleToggleDone = async (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
     const newStatus: TaskStatus = task.status === 'done' ? 'in_progress' : 'done';
+
+    // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
+    if (newStatus === 'done' && !isManager) {
+      setToggleError('Apenas Gestores e Administradores podem concluir tarefas.');
+      setTimeout(() => setToggleError(null), 3500);
+      return;
+    }
+
     await updateTask(task.id, { status: newStatus });
     await logActivity({
       projectId: task.projectId,
@@ -72,6 +106,21 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {toggleError && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-semibold shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <span className="p-1 rounded-md bg-amber-100 text-amber-700">⚠️</span>
+            <span>{toggleError}</span>
+          </div>
+          <button
+            onClick={() => setToggleError(null)}
+            className="text-amber-700 hover:text-amber-900 text-xs px-2 py-0.5"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       {/* Top Controls Bar */}
       <div className="bg-white rounded-2xl p-4 border border-[#EAE5F4] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
@@ -131,16 +180,26 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
             <option value="low">Baixa</option>
           </select>
 
-          {/* Search bar */}
-          <div className="relative w-full md:w-56">
+          {/* Search bar inside view (bound to searchQuery state) */}
+          <div className="relative w-full md:w-64">
             <Search className="w-3.5 h-3.5 text-[#958FA5] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Buscar em minhas tarefas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-[#F5F3FA] border border-[#DDD7E9] rounded-lg text-xs text-[#1E1638] placeholder-[#958FA5] focus:outline-none focus:border-[#7654C7]"
+              placeholder="Buscar por título ou descrição..."
+              value={currentSearch}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-8 pr-8 py-1.5 bg-[#F5F3FA] border border-[#DDD7E9] rounded-lg text-xs text-[#1E1638] placeholder-[#958FA5] focus:outline-none focus:border-[#7654C7]"
             />
+            {currentSearch && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[#958FA5] hover:text-[#1E1638] rounded transition"
+                title="Limpar busca"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -150,16 +209,32 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center border border-[#EAE5F4] shadow-xs">
             <CheckSquare className="w-12 h-12 text-[#958FA5] mx-auto mb-3" />
-            <h3 className="text-base font-bold text-[#1E1638]">Nenhuma tarefa encontrada</h3>
+            <h3 className="text-base font-bold text-[#1E1638]">
+              {activeSearch
+                ? `Nenhuma tarefa encontrada para "${currentSearch}"`
+                : 'Nenhuma tarefa encontrada'}
+            </h3>
             <p className="text-xs text-[#5A5370] mt-1 max-w-sm mx-auto">
-              Você não possui tarefas correspondentes aos filtros selecionados.
+              {activeSearch
+                ? 'Tente utilizar outros termos na busca por título ou descrição da tarefa.'
+                : 'Você não possui tarefas correspondentes aos filtros selecionados.'}
             </p>
-            <button
-              onClick={onOpenNewTaskModal}
-              className="mt-4 px-4 py-2 bg-[#30205D] hover:bg-[#4C3882] text-white text-xs font-semibold rounded-lg shadow-xs transition"
-            >
-              Criar Nova Tarefa
-            </button>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {activeSearch && (
+                <button
+                  onClick={handleClearSearch}
+                  className="px-3.5 py-2 bg-[#F5F3FA] hover:bg-[#ECE7F6] text-[#30205D] text-xs font-semibold rounded-lg border border-[#DDD7E9] transition"
+                >
+                  Limpar Busca
+                </button>
+              )}
+              <button
+                onClick={onOpenNewTaskModal}
+                className="px-4 py-2 bg-[#30205D] hover:bg-[#4C3882] text-white text-xs font-semibold rounded-lg shadow-xs transition"
+              >
+                Criar Nova Tarefa
+              </button>
+            </div>
           </div>
         ) : (
           filtered.map((task) => {

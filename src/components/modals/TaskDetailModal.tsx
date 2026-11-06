@@ -12,6 +12,8 @@ import {
   Plus,
   AlertCircle,
   Tag,
+  UserCheck,
+  UserMinus,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -143,7 +145,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
+  const [statusError, setStatusError] = useState<string | null>(null);
+
   const handleStatusChange = async (newStatus: TaskStatus) => {
+    // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
+    if (newStatus === 'done' && !isManager) {
+      setStatusError('Apenas Gestores e Administradores podem concluir tarefas.');
+      setTimeout(() => setStatusError(null), 3500);
+      return;
+    }
+
     setStatus(newStatus);
     // Find column matching title or keep current
     const matchingCol = columns.find(
@@ -246,10 +257,58 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
+  const [claiming, setClaiming] = useState(false);
+
   const toggleAssignee = (userId: string) => {
     setAssigneeIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
+  };
+
+  const isCurrentAssigned = Boolean(currentUser?.uid && assigneeIds.includes(currentUser.uid));
+
+  const handleClaimTask = async () => {
+    if (!currentUser?.uid) return;
+    try {
+      setClaiming(true);
+      const updatedAssignees = Array.from(new Set([...assigneeIds, currentUser.uid]));
+      setAssigneeIds(updatedAssignees);
+      await updateTask(task.id, { assigneeIds: updatedAssignees });
+      await logActivity({
+        projectId: task.projectId,
+        taskId: task.id,
+        userId: currentUser.uid,
+        userName: userProfile?.name || 'Colaborador',
+        action: 'assumiu a responsabilidade pela tarefa',
+        details: task.title,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const handleReleaseTask = async () => {
+    if (!currentUser?.uid) return;
+    try {
+      setClaiming(true);
+      const updatedAssignees = assigneeIds.filter((id) => id !== currentUser.uid);
+      setAssigneeIds(updatedAssignees);
+      await updateTask(task.id, { assigneeIds: updatedAssignees });
+      await logActivity({
+        projectId: task.projectId,
+        taskId: task.id,
+        userId: currentUser.uid,
+        userName: userProfile?.name || 'Colaborador',
+        action: 'deixou a responsabilidade da tarefa',
+        details: task.title,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setClaiming(false);
+    }
   };
 
   const completedChecklistCount = checklist.filter((i) => i.completed).length;
@@ -301,21 +360,43 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
           {/* Status Quick Switcher */}
+          {statusError && (
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center justify-between">
+              <span>{statusError}</span>
+              <button
+                onClick={() => setStatusError(null)}
+                className="text-amber-700 hover:text-amber-900 text-xs ml-2"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             <span className="font-semibold text-[#5A5370] text-xs shrink-0 mr-1">Status:</span>
-            {(['backlog', 'todo', 'in_progress', 'review', 'done'] as TaskStatus[]).map((s) => (
-              <button
-                key={s}
-                onClick={() => handleStatusChange(s)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
-                  status === s
-                    ? 'ring-2 ring-[#7654C7] ring-offset-1 opacity-100 font-bold'
-                    : 'opacity-70 hover:opacity-100'
-                }`}
-              >
-                <StatusBadge status={s} />
-              </button>
-            ))}
+            {(['backlog', 'todo', 'in_progress', 'review', 'done'] as TaskStatus[]).map((s) => {
+              const isDoneDisabled = s === 'done' && !isManager;
+              return (
+                <button
+                  key={s}
+                  onClick={() => handleStatusChange(s)}
+                  title={
+                    isDoneDisabled
+                      ? 'Apenas Gestores e Administradores podem concluir tarefas'
+                      : undefined
+                  }
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1 ${
+                    status === s
+                      ? 'ring-2 ring-[#7654C7] ring-offset-1 opacity-100 font-bold'
+                      : isDoneDisabled
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <StatusBadge status={s} />
+                </button>
+              );
+            })}
           </div>
 
           {/* Details Row: Due Date, Priority, Column */}
@@ -418,10 +499,37 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           {/* Assignees */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A5370] mb-2 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#7654C7]" />
-              <span>Colaboradores Designados ({assigneeIds.length})</span>
-            </h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A5370] flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#7654C7]" />
+                <span>Colaboradores Designados ({assigneeIds.length})</span>
+              </h4>
+
+              {/* Botão para o colaborador assumir ou deixar a tarefa */}
+              {isCurrentAssigned ? (
+                <button
+                  type="button"
+                  onClick={handleReleaseTask}
+                  disabled={claiming}
+                  className="px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+                  title="Remover sua atribuição desta tarefa"
+                >
+                  <UserMinus className="w-3.5 h-3.5" />
+                  <span>{claiming ? 'Atualizando...' : 'Deixar Tarefa'}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleClaimTask}
+                  disabled={claiming}
+                  className="px-2.5 py-1 text-xs font-semibold text-white bg-[#7654C7] hover:bg-[#6442b5] rounded-lg shadow-xs transition flex items-center gap-1.5 disabled:opacity-50"
+                  title="Tornar-se responsável por esta tarefa"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>{claiming ? 'Assumindo...' : 'Assumir Tarefa'}</span>
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               {assigneeIds.map((id) => {
                 const u = users.find((usr) => usr.id === id);

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { StatusBadge, PriorityBadge } from '../components/common/Badge';
+import { ProjectTasksChartWidget } from '../components/widgets/ProjectTasksChartWidget';
 import type { Project, Task } from '../types';
 
 interface DashboardViewProps {
@@ -181,6 +182,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           );
         })}
       </div>
+
+      {/* Widget Gráfico de Tarefas Concluídas vs Pendentes por Projeto */}
+      <ProjectTasksChartWidget
+        projects={projects}
+        tasks={tasks}
+        onSelectProject={onSelectProject}
+      />
 
       {/* Two Column Layout: Upcoming Deliverables & Recent Projects */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

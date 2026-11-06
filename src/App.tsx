@@ -118,11 +118,14 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F3FA] flex flex-col items-center justify-center p-4">
-        <div className="w-16 h-16 rounded-2xl bg-[#30205D] text-white flex items-center justify-center shadow-xl mb-4 animate-pulse">
-          <Layers className="w-8 h-8 text-[#A987FD]" />
+        <div className="p-4 rounded-2xl bg-white shadow-xl shadow-[#30205D]/10 border border-[#EAE5F4] mb-3 animate-pulse">
+          <img
+            src="/assets/aistudio/Logo_tecnol_gico_Dsk_Work_em_azul_e_roxo_56a1e2ae.png"
+            alt="DK Work"
+            className="h-12 w-auto object-contain"
+          />
         </div>
-        <h2 className="text-xl font-bold text-[#1E1638] tracking-tight">DK Work</h2>
-        <p className="text-xs text-[#5A5370] mt-1">Carregando ambiente de trabalho...</p>
+        <p className="text-xs text-[#5A5370]">Carregando ambiente de trabalho...</p>
       </div>
     );
   }
@@ -208,6 +211,8 @@ function AppContent() {
                 setTaskModalContext({});
                 setIsNewTaskModalOpen(true);
               }}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
             />
           )}
 

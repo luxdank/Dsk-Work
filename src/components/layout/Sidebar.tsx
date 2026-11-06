@@ -80,18 +80,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         {/* Brand Header */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-[#4C3882]/50">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-[#7654C7] to-[#9989CC] flex items-center justify-center text-white font-bold shadow-md shadow-[#1B0748]/30">
-              <Layers className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                DK Work
-              </span>
-              <p className="text-[10px] text-[#A987FD] font-medium tracking-wide uppercase">
-                Gestão Ágil
-              </p>
+        <div className="h-16 flex items-center justify-between px-4 border-b border-[#4C3882]/50">
+          <div className="flex items-center">
+            <div className="h-10 px-3 bg-white rounded-xl flex items-center shadow-xs">
+              <img
+                src="/assets/aistudio/Logo_tecnol_gico_Dsk_Work_em_azul_e_roxo_56a1e2ae.png"
+                alt="DK Work"
+                className="h-7 w-auto object-contain"
+              />
             </div>
           </div>
           <button
