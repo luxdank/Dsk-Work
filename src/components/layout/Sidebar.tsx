@@ -84,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center">
             <div className="h-10 px-3 bg-white rounded-xl flex items-center shadow-xs">
               <img
-                src="/assets/aistudio/Logo_tecnol_gico_Dsk_Work_em_azul_e_roxo_56a1e2ae.png"
+                src="/assets/aistudio/Logo_Dsk_Work_com_Checklist_Azul_Violeta_936d0b61.png"
                 alt="DK Work"
                 className="h-7 w-auto object-contain"
               />

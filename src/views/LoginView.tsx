@@ -121,7 +121,7 @@ export const LoginView: React.FC = () => {
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white shadow-xl shadow-[#30205D]/10 border border-[#EAE5F4] mb-3 transform hover:scale-105 transition">
             <img
-              src="/assets/aistudio/Logo_tecnol_gico_Dsk_Work_em_azul_e_roxo_56a1e2ae.png"
+              src="/assets/aistudio/Logo_Dsk_Work_com_Checklist_Azul_Violeta_936d0b61.png"
               alt="DK Work"
               className="h-12 w-auto object-contain"
             />

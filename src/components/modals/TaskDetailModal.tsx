@@ -145,16 +145,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
-  const [statusError, setStatusError] = useState<string | null>(null);
-
   const handleStatusChange = async (newStatus: TaskStatus) => {
-    // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
-    if (newStatus === 'done' && !isManager) {
-      setStatusError('Apenas Gestores e Administradores podem concluir tarefas.');
-      setTimeout(() => setStatusError(null), 3500);
-      return;
-    }
-
     setStatus(newStatus);
     // Find column matching title or keep current
     const matchingCol = columns.find(
@@ -360,43 +351,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
           {/* Status Quick Switcher */}
-          {statusError && (
-            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center justify-between">
-              <span>{statusError}</span>
-              <button
-                onClick={() => setStatusError(null)}
-                className="text-amber-700 hover:text-amber-900 text-xs ml-2"
-              >
-                ×
-              </button>
-            </div>
-          )}
-
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             <span className="font-semibold text-[#5A5370] text-xs shrink-0 mr-1">Status:</span>
-            {(['backlog', 'todo', 'in_progress', 'review', 'done'] as TaskStatus[]).map((s) => {
-              const isDoneDisabled = s === 'done' && !isManager;
-              return (
-                <button
-                  key={s}
-                  onClick={() => handleStatusChange(s)}
-                  title={
-                    isDoneDisabled
-                      ? 'Apenas Gestores e Administradores podem concluir tarefas'
-                      : undefined
-                  }
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1 ${
-                    status === s
-                      ? 'ring-2 ring-[#7654C7] ring-offset-1 opacity-100 font-bold'
-                      : isDoneDisabled
-                      ? 'opacity-40 cursor-not-allowed'
-                      : 'opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <StatusBadge status={s} />
-                </button>
-              );
-            })}
+            {(['backlog', 'todo', 'in_progress', 'review', 'done'] as TaskStatus[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => handleStatusChange(s)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                  status === s
+                    ? 'ring-2 ring-[#7654C7] ring-offset-1 opacity-100 font-bold'
+                    : 'opacity-70 hover:opacity-100'
+                }`}
+              >
+                <StatusBadge status={s} />
+              </button>
+            ))}
           </div>
 
           {/* Details Row: Due Date, Priority, Column */}

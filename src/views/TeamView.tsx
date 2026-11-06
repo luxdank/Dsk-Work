@@ -269,11 +269,10 @@ export const TeamView: React.FC<TeamViewProps> = ({ users, departments, tasks })
                     {isAdmin && (
                       <button
                         onClick={() => openEditModal(user)}
-                        className="px-2.5 py-1 text-xs font-semibold text-[#7654C7] bg-[#7654C7]/10 hover:bg-[#7654C7] hover:text-white rounded-lg transition flex items-center gap-1 shrink-0"
-                        title="Alterar Nível de Acesso (Administrador / Gestor / Colaborador)"
+                        className="p-1.5 text-[#958FA5] hover:text-[#30205D] hover:bg-[#F5F3FA] rounded-lg transition"
+                        title="Editar Permissões"
                       >
-                        <Shield className="w-3.5 h-3.5" />
-                        <span>Nível</span>
+                        <Edit2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>

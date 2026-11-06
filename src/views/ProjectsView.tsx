@@ -352,8 +352,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     const projectTasks = tasks.filter((t) => t.projectId === selectedProject.id);
 
-    const [permissionError, setPermissionError] = useState<string | null>(null);
-
     const handleMoveTaskColumn = async (task: Task, direction: 'prev' | 'next') => {
       const currentIndex = projectColumns.findIndex((c) => c.id === task.columnId);
       if (currentIndex === -1) return;
@@ -370,13 +368,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       else if (lower.includes('andamento')) targetStatus = 'in_progress';
       else if (lower.includes('revis')) targetStatus = 'review';
       else if (lower.includes('conclu')) targetStatus = 'done';
-
-      // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
-      if (targetStatus === 'done' && !isManager) {
-        setPermissionError('Apenas Gestores e Administradores têm permissão para concluir tarefas.');
-        setTimeout(() => setPermissionError(null), 4000);
-        return;
-      }
 
       await updateTask(task.id, {
         columnId: targetCol.id,
@@ -424,13 +415,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       else if (lower.includes('andamento')) targetStatus = 'in_progress';
       else if (lower.includes('revis')) targetStatus = 'review';
       else if (lower.includes('conclu')) targetStatus = 'done';
-
-      // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
-      if (targetStatus === 'done' && !isManager) {
-        setPermissionError('Apenas Gestores e Administradores têm permissão para concluir tarefas.');
-        setTimeout(() => setPermissionError(null), 4000);
-        return;
-      }
 
       // Update in Firestore
       await updateTask(taskId, {
@@ -484,21 +468,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     return (
       <div className="space-y-4">
-        {permissionError && (
-          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-semibold shadow-xs animate-in fade-in duration-200">
-            <div className="flex items-center gap-2">
-              <span className="p-1 rounded-md bg-amber-100 text-amber-700">⚠️</span>
-              <span>{permissionError}</span>
-            </div>
-            <button
-              onClick={() => setPermissionError(null)}
-              className="text-amber-700 hover:text-amber-900 text-xs px-2 py-0.5"
-            >
-              Fechar
-            </button>
-          </div>
-        )}
-
         {/* Project Header Bar */}
         <div className="bg-white rounded-2xl p-4 md:p-6 border border-[#EAE5F4] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start md:items-center gap-3">

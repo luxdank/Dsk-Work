@@ -33,11 +33,10 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   searchQuery,
   setSearchQuery,
 }) => {
-  const { currentUser, userProfile, isManager } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [toggleError, setToggleError] = useState<string | null>(null);
 
   // Use the external searchQuery if provided, otherwise fallback to local searchTerm
   const currentSearch = (searchQuery !== undefined ? searchQuery : searchTerm);
@@ -85,14 +84,6 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   const handleToggleDone = async (e: React.MouseEvent, task: Task) => {
     e.stopPropagation();
     const newStatus: TaskStatus = task.status === 'done' ? 'in_progress' : 'done';
-
-    // Rule: Só quem pode mover o card para concluído são os níveis "Gestor" e "Administrador"
-    if (newStatus === 'done' && !isManager) {
-      setToggleError('Apenas Gestores e Administradores podem concluir tarefas.');
-      setTimeout(() => setToggleError(null), 3500);
-      return;
-    }
-
     await updateTask(task.id, { status: newStatus });
     await logActivity({
       projectId: task.projectId,
@@ -106,21 +97,6 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {toggleError && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between font-semibold shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-amber-100 text-amber-700">⚠️</span>
-            <span>{toggleError}</span>
-          </div>
-          <button
-            onClick={() => setToggleError(null)}
-            className="text-amber-700 hover:text-amber-900 text-xs px-2 py-0.5"
-          >
-            Fechar
-          </button>
-        </div>
-      )}
-
       {/* Top Controls Bar */}
       <div className="bg-white rounded-2xl p-4 border border-[#EAE5F4] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
