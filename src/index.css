@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --dk-primary: #30205d;
+    --dk-primary-dark: #1b0748;
+    --dk-secondary: #7654c7;
+    --dk-secondary-light: #a987fd;
+    --dk-tertiary: #4c3882;
+    --dk-bg: #f5f3fa;
+    --dk-surface: #ffffff;
+    --dk-surface-subtle: #efedf4;
+    --dk-text-primary: #1e1638;
+    --dk-text-secondary: #5a5370;
+    --dk-text-muted: #958fa5;
+    --dk-border: #eae5f4;
+  }
+
+  body {
+    background-color: #f5f3fa;
+    color: #1e1638;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom scrollbars for Kanban swimlanes and modals */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cac4d1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #958fa5;
+}

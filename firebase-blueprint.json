@@ -1,0 +1,215 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with role, department, and contact info",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["admin", "gestor", "colaborador"] },
+        "department": { "type": "string", "maxLength": 80 },
+        "position": { "type": "string", "maxLength": 80 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Company departments such as Marketing, Comercial, Tecnologia",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 300 },
+        "color": { "type": "string", "maxLength": 20 },
+        "leaderId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Workspace project containing boards and tasks",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "department": { "type": "string", "maxLength": 80 },
+        "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "memberIds": { "type": "array" },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "ownerId", "status"]
+    },
+    "ProjectMember": {
+      "title": "Project Member",
+      "description": "Membership association between a user and a project",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "roleInProject": { "type": "string", "enum": ["manager", "member", "viewer"] },
+        "joinedAt": { "type": "string" }
+      },
+      "required": ["projectId", "userId", "roleInProject"]
+    },
+    "Board": {
+      "title": "Board",
+      "description": "Kanban board for a project",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["projectId", "name"]
+    },
+    "Column": {
+      "title": "Column",
+      "description": "Kanban lane/column inside a board",
+      "type": "object",
+      "properties": {
+        "boardId": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 80 },
+        "order": { "type": "number" },
+        "color": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["boardId", "projectId", "title", "order"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Individual task/card inside a column and project",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "maxLength": 128 },
+        "boardId": { "type": "string", "maxLength": 128 },
+        "columnId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "status": { "type": "string", "enum": ["backlog", "todo", "in_progress", "review", "done"] },
+        "assigneeIds": { "type": "array" },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "tags": { "type": "array" },
+        "order": { "type": "number" },
+        "checklistTotal": { "type": "number" },
+        "checklistCompleted": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["projectId", "columnId", "title", "priority", "status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Discussion item on a task",
+      "type": "object",
+      "properties": {
+        "taskId": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userAvatar": { "type": "string", "maxLength": 500 },
+        "content": { "type": "string", "maxLength": 1500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["taskId", "projectId", "userId", "content"]
+    },
+    "Checklist": {
+      "title": "Checklist Item",
+      "description": "Subtask or item in task checklist",
+      "type": "object",
+      "properties": {
+        "taskId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "completed": { "type": "boolean" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["taskId", "title", "completed"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "message": { "type": "string", "maxLength": 500 },
+        "type": { "type": "string", "enum": ["task_assigned", "status_changed", "mention", "deadline", "general"] },
+        "read": { "type": "boolean" },
+        "link": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "title", "message", "read"]
+    },
+    "ActivityLog": {
+      "title": "Activity Log",
+      "description": "Audit trail of actions within projects or tasks",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "maxLength": 128 },
+        "taskId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "action": { "type": "string", "maxLength": 100 },
+        "details": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "action"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles and roles"
+    },
+    "/departments/{departmentId}": {
+      "schema": { "$ref": "Department" },
+      "description": "Company departments"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "Project" },
+      "description": "Work projects"
+    },
+    "/projectMembers/{memberId}": {
+      "schema": { "$ref": "ProjectMember" },
+      "description": "Project membership links"
+    },
+    "/boards/{boardId}": {
+      "schema": { "$ref": "Board" },
+      "description": "Kanban boards belonging to projects"
+    },
+    "/columns/{columnId}": {
+      "schema": { "$ref": "Column" },
+      "description": "Board columns"
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "Task" },
+      "description": "Project tasks"
+    },
+    "/comments/{commentId}": {
+      "schema": { "$ref": "Comment" },
+      "description": "Task comments"
+    },
+    "/checklists/{checklistId}": {
+      "schema": { "$ref": "Checklist" },
+      "description": "Task checklist sub-items"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "Notification" },
+      "description": "User notifications"
+    },
+    "/activityLogs/{activityId}": {
+      "schema": { "$ref": "ActivityLog" },
+      "description": "Audit and history logs"
+    }
+  }
+}
